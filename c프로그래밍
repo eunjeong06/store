@@ -1,0 +1,244 @@
+#define _CRT_SECURE_NO_WARNINGS
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <windows.h>  // GUI 알림창에 필요
+
+typedef struct {
+    int id;
+    char product[50];
+    char store[50];
+    char order_date[50];
+    char status[50];
+} Delivery;
+
+void showmenu() {
+    printf("\n========== 택배 추적 메모장 ==========\n");
+    printf("1. 새 택배 등록\n");
+    printf("2. 전체 목록 보기\n");
+    printf("3. 상품명으로 검색\n");
+    printf("4. 배송 상태 수정\n");
+    printf("5. 택배 삭제\n");
+    printf("6. 프로그램 종료\n");
+    printf("========================================\n");
+    printf("메뉴 번호를 선택하세요: ");
+}
+
+void deleteDelivery();
+void updatestatus();
+void searchDelivery();
+void showallDeliveries();
+void registerDelivery();
+
+int main() {
+    srand(time(NULL));
+    int choice;
+
+    while (1) {
+        showmenu();  // 메뉴 출력
+        scanf("%d", &choice);  // 메뉴 선택 입력
+
+        switch (choice) {
+        case 1:
+            registerDelivery();
+            break;
+        case 2:
+            showallDeliveries();
+            break;
+        case 3:
+            searchDelivery();
+            break;
+        case 4:
+            updatestatus();
+            break;
+        case 5:
+            deleteDelivery();
+            break;
+        case 6:
+            printf("\n모든 정보가 'deliveries.txt'에 저장되었습니다.\n");
+            printf("프로그램을 종료합니다.\n");
+            return 0;
+        default:
+            printf("\n잘못된 입력입니다. 다시 선택해주세요.\n");
+        }
+    }
+    return 0;
+}
+
+void registerDelivery() {
+    FILE* fp;
+    Delivery d;
+
+    printf("\n택배 정보를 입력하세요\n");
+    printf("상품명: ");
+    scanf("%s", d.product);
+    printf("쇼핑몰명: ");
+    scanf("%s", d.store);
+    printf("주문일 (예: 2025-06-08): ");
+    scanf("%s", d.order_date);
+    printf("배송 상태 (예: 배송중, 배송완료): ");
+    scanf("%s", d.status);
+
+    d.id = rand() % 10000 + 1;
+
+    fp = fopen("deliveries.txt", "a");
+    if (fp == NULL) {
+        printf("파일 열기 실패!\n");
+        return;
+    }
+
+    fprintf(fp, "%d %s %s %s %s\n", d.id, d.product, d.store, d.order_date, d.status);
+    fclose(fp);
+
+    printf("\n등록 완료 ID: %d\n", d.id);
+    MessageBoxA(NULL, "택배 등록이 완료되었습니다!", "알림", MB_OK);  // GUI 알림창
+}
+
+void showallDeliveries() {
+    FILE* fp;
+    Delivery d;
+
+    fp = fopen("deliveries.txt", "r");
+    if (fp == NULL) {
+        printf("\n파일 오픈 불가.\n");
+        return;
+    }
+
+    printf("\n===== 전체 택배 목록 =====\n");
+    printf("ID\t상품명\t\t쇼핑몰\t\t주문일\t\t상태\n");
+    printf("------------------------------------------------------------\n");
+
+    while (fscanf(fp, "%d %s %s %s %s",
+        &d.id, d.product, d.store, d.order_date, d.status) == 5) {
+        printf("%d\t%-10s\t%-12s\t%-10s\t%-10s\n",
+            d.id, d.product, d.store, d.order_date, d.status);
+    }
+    fclose(fp);
+}
+
+void searchDelivery() {
+    FILE* fp;
+    Delivery d;
+    char keyword[50];
+    int found = 0;
+
+    printf("\n검색할 상품명을 입력하세요: ");
+    scanf("%s", keyword);
+
+    fp = fopen("deliveries.txt", "r");
+    if (fp == NULL) {
+        printf("\n파일을 열 수 없습니다.\n");
+        return;
+    }
+
+    printf("\n===== 검색 결과 =====\n");
+    printf("ID\t상품명\t\t쇼핑몰\t\t주문일\t\t상태\n");
+    printf("------------------------------------------------------------\n");
+
+    while (fscanf(fp, "%d %s %s %s %s",
+        &d.id, d.product, d.store, d.order_date, d.status) == 5) {
+        if (strstr(d.product, keyword) != NULL) {
+            printf("%d\t%-10s\t%-12s\t%-10s\t%-10s\n",
+                d.id, d.product, d.store, d.order_date, d.status);
+            found = 1;
+        }
+    }
+
+    if (!found) {
+        printf("일치하는 상품이 없습니다.\n");
+        MessageBoxA(NULL, "일치하는 상품이 없습니다.", "검색 결과", MB_ICONINFORMATION);
+    }
+
+    fclose(fp);
+}
+
+void updatestatus() {
+    FILE* fp, * temp;
+    Delivery d;
+    int id;
+    int found = 0;
+    char new_status[50];
+
+    printf("\n수정할 택배 ID를 입력하세요: ");
+    scanf("%d", &id);
+
+    fp = fopen("deliveries.txt", "r");
+    temp = fopen("temp.txt", "w");
+    if (fp == NULL || temp == NULL) {
+        printf("파일 열기 실패!\n");
+        return;
+    }
+
+    while (fscanf(fp, "%d %s %s %s %s",
+        &d.id, d.product, d.store, d.order_date, d.status) == 5) {
+        if (d.id == id) {
+            printf("새로운 배송 상태를 입력하세요 (예: 배송중, 배송완료): ");
+            scanf("%s", new_status);
+            strcpy(d.status, new_status);
+            found = 1;
+        }
+        fprintf(temp, "%d %s %s %s %s\n",
+            d.id, d.product, d.store, d.order_date, d.status);
+    }
+
+    fclose(fp);
+    fclose(temp);
+
+    if (found) {
+        remove("deliveries.txt");
+        rename("temp.txt", "deliveries.txt");
+        printf("\n배송 상태가 수정되었습니다.\n");
+        MessageBoxA(NULL, "배송 상태가 수정되었습니다.", "수정 완료", MB_OK);
+    }
+    else {
+        remove("temp.txt");
+        printf("\n해당 ID를 가진 택배를 찾을 수 없습니다.\n");
+        MessageBoxA(NULL, "해당 ID를 찾을 수 없습니다.", "수정 실패", MB_ICONWARNING);
+    }
+}
+
+void deleteDelivery() {
+    FILE* fp, * temp;
+    Delivery d;
+    int id;
+    int found = 0;
+
+    printf("\n삭제할 택배 ID를 입력하세요: ");
+    scanf("%d", &id);
+
+    fp = fopen("deliveries.txt", "r");
+    temp = fopen("temp.txt", "w");
+
+    if (fp == NULL || temp == NULL) {
+        printf("파일 열기 실패!\n");
+        return;
+    }
+
+    while (fscanf(fp, "%d %s %s %s %s",
+        &d.id, d.product, d.store, d.order_date, d.status) == 5) {
+        if (d.id == id) {
+            found = 1;
+            continue;
+        }
+        fprintf(temp, "%d %s %s %s %s\n",
+            d.id, d.product, d.store, d.order_date, d.status);
+    }
+
+    fclose(fp);
+    fclose(temp);
+
+    if (found) {
+        remove("deliveries.txt");
+        rename("temp.txt", "deliveries.txt");
+        printf("\n택배 정보가 삭제되었습니다.\n");
+        MessageBoxA(NULL, "택배 정보가 삭제되었습니다.", "삭제 완료", MB_OK);
+    }
+    else {
+        remove("temp.txt");
+        printf("\n해당 ID를 가진 택배를 찾을 수 없습니다.\n");
+        MessageBoxA(NULL, "해당 ID를 찾을 수 없습니다.", "삭제 실패", MB_ICONWARNING);
+    }
+}
+
+
